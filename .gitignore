@@ -1,0 +1,27 @@
+# See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+
+# --- NODE & ANGULAR (O que remove os 10k arquivos) ---
+**/node_modules/
+**/.angular/
+**/dist/
+**/tmp/
+**/out-tsc/
+
+# --- PYTHON & SPARK ---
+**/_pycache_/
+*/.pyc
+**/venv/
+**/.venv/
+**/env/
+
+# --- SYSTEM & IDE ---
+.DS_Store
+.vscode/
+.idea/
+*.sublime-workspace
+.history/
+
+# --- LOGS ---
+*.log
+npm-debug.log*
+yarn-debug.log*
