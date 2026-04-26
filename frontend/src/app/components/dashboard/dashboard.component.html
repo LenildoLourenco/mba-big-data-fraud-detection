@@ -2,7 +2,7 @@
   <header class="dashboard-header">
     <div class="header-content">
       <h1>🛡️ Intelligence Anti-Fraude</h1>
-      <span class="pipeline-badge">Spark ➔ Angular 19</span>
+      <span class="pipeline-badge">Spark ➔ Angular 21</span>
     </div>
     <p>Análise preditiva de registros processados em ambiente Big Data.</p>
   </header>
@@ -47,23 +47,41 @@
   <section class="table-section">
   <div class="table-responsive">
     <table>
-      <thead>
-        <tr>
-          <th>ID Transação</th>
-          <th>Valor</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (item of dadosPaginados; track $index) {
-          <tr>
-            <td class="font-mono">{{ item.id_transacao }}</td>
-            <td class="font-bold">{{ item.valor | currency:'BRL' }}</td>
-            <td><span class="badge">⚠️ {{ item.status }}</span></td>
-          </tr>
-        }
-      </tbody>
-    </table>
+  <thead>
+    <tr>
+      <th>ID Transação</th>
+      <th>Valor</th>
+      <th>Status</th>
+      <th>País</th>
+      <th>Tentativas</th>
+      <th>Data / Hora</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    @for (item of dadosPaginados; track $index) {
+      <tr>
+        <td class="font-mono">{{ item.id_transacao }}</td>
+
+        <td class="font-bold">
+          {{ item.valor | currency:'BRL':'symbol':'1.2-2':'pt-BR' }}
+        </td>
+
+        <td>
+          <span class="badge">
+            ⚠️ {{ item.statusFormatado }}
+          </span>
+        </td>
+
+        <td>{{ item.paisFormatado }}</td>
+
+        <td>{{ item.tentativas }}</td>
+
+        <td>{{ item.dataFormatada }}</td>
+      </tr>
+    }
+  </tbody>
+</table>
   </div>
 
   <div class="pagination-controls">

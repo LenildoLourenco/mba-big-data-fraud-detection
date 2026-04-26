@@ -1,29 +1,87 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, rand, when, round as spark_round # Import correto
-import json
+from pyspark.sql.functions import current_timestamp
+from pyspark.sql.functions import (
+    col, rand, when, round as spark_round, expr
+)
 
 spark = SparkSession.builder \
-    .appName("MBABigData") \
-    .config("spark.driver.extraJavaOptions", "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED") \
+    .appName("FraudDetectionMBA") \
     .getOrCreate()
 
-print("Gerando 1.000.000 de transações...")
+print("Gerando transações mais realistas...")
 
-# Gerar Volume (1 Milhão de registros)
-df = spark.range(0, 1000000) \
-    .withColumn("valor", spark_round(rand() * 1000, 2)) \
+df = (
+    spark.range(0, 1000000)
     .withColumn("id_transacao", col("id").cast("string"))
 
-# Lógica de Fraude
-df_analisado = df.withColumn("status", 
-    when(col("valor") > 950, "SUSPEITA").otherwise("NORMAL"))
+    .withColumn(
+        "valor",
+        spark_round(
+            when(rand() < 0.85, rand() * 300)
+            .when(rand() < 0.97, rand() * 1000)
+            .otherwise(rand() * 5000),
+            2
+        )
+    )
 
-# Filtrar para o Dashboard (Top 100)
-fraudes = df_analisado.filter(col("status") == "SUSPEITA").limit(100).toPandas()
+    .withColumn("hora", (rand() * 24).cast("int"))
+    .withColumn("tentativas", (rand() * 5).cast("int"))
 
-# 4. Salvar JSON
-result = fraudes.to_dict(orient='records')
-with open('data_results.json', 'w') as f:
-    json.dump(result, f)
+    .withColumn(
+        "pais",
+        when(rand() < 0.1, "US")
+        .when(rand() < 0.2, "GB")
+        .when(rand() < 0.3, "FR")
+        .when(rand() < 0.4, "DE")
+        .when(rand() < 0.5, "IN")
+        .when(rand() < 0.6, "CN")
+        .when(rand() < 0.7, "JP")
+        .when(rand() < 0.8, "CA")
+        .when(rand() < 0.9, "AU")
+        .otherwise("BR")
+    )
 
-print("Backend Concluído: data_results.json gerado com sucesso!")
+    .withColumn(
+        "device",
+        when(rand() > 0.5, "mobile").otherwise("web")
+    )
+
+    .withColumn(
+        "data_hora",
+        expr("""
+            current_timestamp()
+            - (rand() * 30) * interval 1 day
+            - (rand() * 24) * interval 1 hour
+            - (rand() * 60) * interval 1 minute
+            - (rand() * 60) * interval 1 second
+        """)
+    )
+)
+
+df_analisado = df.withColumn(
+    "status",
+    when(
+        (col("valor") > 2000) &
+        (col("pais") != "BR") &
+        (col("tentativas") >= 3),
+        "ALTA_SUSPEITA"
+    )
+    .when(
+        (col("valor") > 800) &
+        (col("hora") < 6) &
+        (col("tentativas") >= 1),
+        "MEDIA_SUSPEITA"
+    )
+    .otherwise("NORMAL")
+)
+
+fraudes = df_analisado.filter(
+    (col("status") != "NORMAL") &
+    (col("tentativas") > 0)
+)
+
+fraudes = fraudes.orderBy(col("valor").desc())
+
+fraudes.write.mode("overwrite").json("output/fraudes")
+
+print("Dataset gerado com sucesso!")

@@ -1,9 +1,13 @@
 import { Component, OnInit, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { Chart, registerables } from 'chart.js';
 
-// Registra todos os componentes do Chart.js (necessário nas versões novas)
+import { FraudeService } from '../../services/fraude.service';
+
+// utils
+import { formatarStatus, formatarPais, formatarData } from '../../utils/formatters';
+import { Fraude } from '../../models/fraude.model';
+
 Chart.register(...registerables);
 
 @Component({
@@ -14,27 +18,29 @@ Chart.register(...registerables);
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit {
-  // Referência direta ao elemento <canvas> do HTML
+
   @ViewChild('graficoCanvas') graficoCanvas!: ElementRef<HTMLCanvasElement>;
 
-  fraudes: any[] = [];
+  fraudes: Fraude[] = [];
   totalValor: number = 0;
   chart: any;
 
-  // Variáveis de Paginação
   paginaAtual: number = 1;
   itensPorPagina: number = 10;
 
   constructor(
-    private http: HttpClient,
+    private fraudeService: FraudeService,
     private cdr: ChangeDetectorRef
-  ) { }
+  ) {}
 
   ngOnInit() {
     this.carregarDados();
   }
 
-  // Getters para facilitar o HTML
+  // =========================
+  // PAGINAÇÃO
+  // =========================
+
   get totalPaginas(): number {
     return Math.ceil(this.fraudes.length / this.itensPorPagina);
   }
@@ -53,57 +59,55 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  carregarDados() {
-    // Busca o JSON da pasta public (mapeada na raiz '/')
-    this.http.get('data_results.json').subscribe({
-      next: (data: any) => {
-        console.log('Dados carregados com sucesso:', data);
-        this.fraudes = data;
+  // =========================
+  // LOAD DATA (USANDO SERVICE)
+  // =========================
 
-        // Calcula o valor total das fraudes para o KPI Card
+  carregarDados() {
+    this.fraudeService.getFraudes().subscribe({
+      next: (data: any[]) => {
+        console.log('Dados carregados:', data);
+
+        // usando utils
+        this.fraudes = data.map(item => ({
+          ...item,
+          statusFormatado: formatarStatus(item.status),
+          paisFormatado: formatarPais(item.pais),
+          dataFormatada: formatarData(item.data_hora)
+        }));
+
         this.totalValor = this.fraudes.reduce((acc, curr) => acc + (curr.valor || 0), 0);
 
-        // Avisa o Angular para atualizar o HTML (necessário se usar OnPush ou SSR)
         this.cdr.detectChanges();
 
-        // Aguarda o Angular renderizar o Canvas antes de inicializar o gráfico
         setTimeout(() => this.createChart(), 150);
       },
       error: (err) => {
-        console.error('Erro ao carregar o arquivo JSON:', err);
+        console.error('Erro ao carregar dados:', err);
       }
     });
   }
 
+  // =========================
+  // CHART
+  // =========================
+
   createChart() {
-    // Verifica se a referência ao canvas existe
-    if (!this.graficoCanvas) {
-      console.warn('Canvas ainda não está pronto no DOM.');
-      return;
-    }
+    if (!this.graficoCanvas) return;
 
     const context = this.graficoCanvas.nativeElement.getContext('2d');
+    if (!context) return;
 
-    if (!context) {
-      console.error("Não foi possível adquirir o contexto 2D do canvas.");
-      return;
-    }
+    if (this.chart) this.chart.destroy();
 
-    // Se já houver um gráfico (ex: após um refresh de dados), destrói o anterior
-    if (this.chart) {
-      this.chart.destroy();
-    }
-
-    // Configuração do Gráfico
     this.chart = new Chart(context, {
       type: 'bar',
       data: {
-        // Pega os 10 primeiros IDs para não poluir o gráfico
-        labels: this.fraudes.slice(0, 10).map(i => "ID " + (i.id_transacao || i.id)),
+        labels: this.fraudes.slice(0, 10).map(i => "ID " + (i.id_transacao)),
         datasets: [{
           label: 'Valor da Fraude (R$)',
           data: this.fraudes.slice(0, 10).map(i => i.valor),
-          backgroundColor: '#e74c3c', 
+          backgroundColor: '#e74c3c',
           borderColor: '#c0392b',
           borderWidth: 1,
           borderRadius: 5

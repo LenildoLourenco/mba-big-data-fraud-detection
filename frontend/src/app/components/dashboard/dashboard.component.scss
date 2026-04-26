@@ -173,3 +173,15 @@ $radius: 16px;
     }
   }
 }
+
+.badge {
+  &.alta_suspeita {
+    background: #fdecea;
+    color: #e74c3c;
+  }
+
+  &.media_suspeita {
+    background: #fff4e5;
+    color: #f39c12;
+  }
+}
