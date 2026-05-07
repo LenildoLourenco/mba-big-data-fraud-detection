@@ -34,7 +34,6 @@ $radius: 16px;
     p { color: $gray-text; margin-top: 8px; font-size: 1.1rem; }
   }
 
-  // Grid de Cards (KPIs)
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -63,7 +62,6 @@ $radius: 16px;
     }
   }
 
-  // Seção do Gráfico
   .chart-section {
     background: $white;
     padding: 1.5rem;
@@ -91,7 +89,6 @@ $radius: 16px;
     }
   }
 
-  // Tabela Estilizada
   .table-section {
     background: $white;
     border-radius: $radius;

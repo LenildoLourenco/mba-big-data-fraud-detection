@@ -37,10 +37,6 @@ export class DashboardComponent implements OnInit {
     this.carregarDados();
   }
 
-  // =========================
-  // PAGINAÇÃO
-  // =========================
-
   get totalPaginas(): number {
     return Math.ceil(this.fraudes.length / this.itensPorPagina);
   }
@@ -59,16 +55,9 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  // =========================
-  // LOAD DATA (USANDO SERVICE)
-  // =========================
-
   carregarDados() {
-    this.fraudeService.getFraudes().subscribe({
+    this.fraudeService.getTopFraudes().subscribe({
       next: (data: any[]) => {
-        console.log('Dados carregados:', data);
-
-        // usando utils
         this.fraudes = data.map(item => ({
           ...item,
           statusFormatado: formatarStatus(item.status),
@@ -87,10 +76,6 @@ export class DashboardComponent implements OnInit {
       }
     });
   }
-
-  // =========================
-  // CHART
-  // =========================
 
   createChart() {
     if (!this.graficoCanvas) return;

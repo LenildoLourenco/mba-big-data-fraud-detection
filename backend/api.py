@@ -1,37 +1,46 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
+from minio import Minio
 import json
+import os
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200"],
-    allow_credentials=True,
+    allow_origins=["*"],  
+    allow_credentials=False, 
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-DATA_PATH = "output/fraudes"
+client = Minio(
+    os.getenv("MINIO_ENDPOINT", "localhost:9000"),
+    access_key=os.getenv("MINIO_ACCESS_KEY", "admin"),
+    secret_key=os.getenv("MINIO_SECRET_KEY", "admin123"),
+    secure=False
+)
 
-def load_data():
-    dados = []
-    if not os.path.exists(DATA_PATH):
-        return []
-
-    for file in os.listdir(DATA_PATH):
-        if file.endswith(".json"):
-            with open(os.path.join(DATA_PATH, file)) as f:
-                for line in f:
-                    dados.append(json.loads(line))
-    return dados
-
-@app.get("/fraudes")
-def get_fraudes():
-    return load_data()
+BUCKET = "fraudes"
+if not client.bucket_exists(BUCKET):
+    client.make_bucket(BUCKET)
 
 @app.get("/fraudes/top")
-def get_top_fraudes():
-    data = load_data()
-    return sorted(data, key=lambda x: x["valor"], reverse=True)[:50]
+def get_fraudes():
+    objects = client.list_objects(BUCKET, prefix="output/", recursive=True)
+    resultado = []
+    for obj in objects:
+        if not obj.object_name.endswith(".json"):
+            continue
+        response = client.get_object(BUCKET, obj.object_name)
+        try:
+            for linha in response:
+                linha_str = linha.decode("utf-8").strip()
+                if linha_str:
+                    resultado.append(json.loads(linha_str))
+        finally:
+            response.close()
+            response.release_conn()
+
+    resultado = sorted(resultado, key=lambda x: x.get("valor", 0), reverse=True)
+    return resultado[:50]
